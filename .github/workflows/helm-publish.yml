@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main # 當推送到 main 分支時觸發
-    paths:
-      - "charts/**" # 當 charts 目錄有變更時觸發
 
 jobs:
   publish:
