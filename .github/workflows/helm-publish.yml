@@ -3,15 +3,15 @@ name: Publish Helm Chart
 on:
   push:
     tags:
-      - "v*" # 只在推送 v 開頭的 tag 時觸發
+      - "v*" # Trigger only when pushing tags starting with 'v'
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 添加寫入權限
-      pages: write # 添加 GitHub Pages 寫入權限
-      id-token: write # 添加身份令牌寫入權限
+      contents: write
+      pages: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -40,22 +40,29 @@ jobs:
             git push origin gh-pages
           fi
 
-      - name: Switch to gh-pages branch
+      - name: Clean and switch to gh-pages branch
         run: |
+          # Save packaged files
+          mv .cr-release-packages /tmp/
+          # Clean working directory
+          git clean -fdx
+          # Switch to gh-pages branch
           git checkout gh-pages
           git pull origin gh-pages
+          # Restore packaged files
+          mv /tmp/.cr-release-packages .
 
       - name: Update Helm repository
         run: |
-          # 複製打包好的 chart 到根目錄
+          # Copy packaged charts to root directory
           cp .cr-release-packages/* .
-          # 更新或創建 index.yaml
+          # Update or create index.yaml
           if [ -f index.yaml ]; then
             helm repo index . --url https://${{ github.repository_owner }}.github.io/$(basename ${{ github.repository }}) --merge index.yaml
           else
             helm repo index . --url https://${{ github.repository_owner }}.github.io/$(basename ${{ github.repository }})
           fi
-          # 提交變更
+          # Commit changes
           git add .
           git commit -m "Release chart version ${GITHUB_REF#refs/tags/v}" || echo "No changes to commit"
           git push origin gh-pages
