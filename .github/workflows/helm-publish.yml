@@ -1,0 +1,63 @@
+name: Publish Helm Chart
+
+on:
+  push:
+    branches:
+      - main # 當推送到 main 分支時觸發
+    paths:
+      - "charts/**" # 當 charts 目錄有變更時觸發
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 添加寫入權限
+      pages: write # 添加 GitHub Pages 寫入權限
+      id-token: write # 添加身份令牌寫入權限
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+
+      - name: Package Helm Charts
+        run: |
+          mkdir -p .cr-release-packages
+          helm package charts/* --destination .cr-release-packages
+
+      - name: Create gh-pages branch if not exists
+        run: |
+          if ! git ls-remote --heads origin gh-pages; then
+            git checkout --orphan gh-pages
+            git rm -rf .
+            git commit --allow-empty -m "Create gh-pages branch"
+            git push origin gh-pages
+          fi
+
+      - name: Switch to gh-pages branch
+        run: |
+          git checkout gh-pages
+          git pull origin gh-pages
+
+      - name: Update Helm repository
+        run: |
+          # 複製打包好的 chart 到根目錄
+          cp .cr-release-packages/* .
+          # 更新或創建 index.yaml
+          if [ -f index.yaml ]; then
+            helm repo index . --url https://${{ github.repository_owner }}.github.io/$(basename ${{ github.repository }}) --merge index.yaml
+          else
+            helm repo index . --url https://${{ github.repository_owner }}.github.io/$(basename ${{ github.repository }})
+          fi
+          # 提交變更
+          git add .
+          git commit -m "Update Helm repository" || echo "No changes to commit"
+          git push origin gh-pages
