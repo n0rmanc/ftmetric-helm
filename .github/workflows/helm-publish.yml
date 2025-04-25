@@ -2,8 +2,8 @@ name: Publish Helm Chart
 
 on:
   push:
-    branches:
-      - main # 當推送到 main 分支時觸發
+    tags:
+      - "v*" # 只在推送 v 開頭的 tag 時觸發
 
 jobs:
   publish:
@@ -29,7 +29,7 @@ jobs:
       - name: Package Helm Charts
         run: |
           mkdir -p .cr-release-packages
-          helm package . --destination .cr-release-packages
+          helm package . --destination .cr-release-packages --version ${GITHUB_REF#refs/tags/v}
 
       - name: Create gh-pages branch if not exists
         run: |
@@ -57,5 +57,5 @@ jobs:
           fi
           # 提交變更
           git add .
-          git commit -m "Update Helm repository" || echo "No changes to commit"
+          git commit -m "Release chart version ${GITHUB_REF#refs/tags/v}" || echo "No changes to commit"
           git push origin gh-pages
