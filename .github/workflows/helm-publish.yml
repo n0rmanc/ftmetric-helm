@@ -29,7 +29,7 @@ jobs:
       - name: Package Helm Charts
         run: |
           mkdir -p .cr-release-packages
-          helm package charts/* --destination .cr-release-packages
+          helm package . --destination .cr-release-packages
 
       - name: Create gh-pages branch if not exists
         run: |
